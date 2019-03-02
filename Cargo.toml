@@ -1,0 +1,7 @@
+[package]
+name = "rusty_clojure"
+version = "0.1.0"
+authors = ["ccQpein"]
+edition = "2018"
+
+[dependencies]
