@@ -1,21 +1,23 @@
 use super::values::*;
+use std::rc::Rc;
 
 use std::collections::HashMap;
 
-type FuncTable = HashMap<String, fn(&Argvs) -> Value>;
+type FuncTable = HashMap<String, fn(&Value) -> Value>;
 
-struct Context {
+pub struct Context {
     funcs: FuncTable,
 }
 
-struct Expression {
+#[derive(Debug, Clone)]
+pub struct Expression {
     first: String,
-    tail: Vec<Value>,
+    tail: Rc<PreValue>,
 }
 
 impl Expression {
-    fn eval(&self, context: Context) -> Value {
-        context.funcs.get(&self.first).unwrap()(&self.tail)
+    pub fn eval(&self, context: &Context) -> Value {
+        context.funcs.get(&self.first).unwrap()(&self.tail.eval(context))
     }
 }
 
@@ -39,17 +41,33 @@ mod tests {
 
         let exp = Expression {
             first: "Add".to_string(),
-            tail: vec![
-                Value::Integer(1),
-                Value::Integer(1),
-                Value::Integer(1),
-                Value::Integer(1),
-                Value::Integer(1),
-            ],
+            tail: Rc::new(PreValue::Value(Value::List(vec![
+                PreValue::Value(Value::Integer(1)),
+                PreValue::Value(Value::Integer(1)),
+                PreValue::Value(Value::Integer(1)),
+                PreValue::Value(Value::Integer(1)),
+                PreValue::Value(Value::Integer(1)),
+            ]))),
         };
 
-        if let Value::Integer(a) = exp.eval(context) {
+        if let Value::Integer(a) = exp.eval(&context) {
             assert!(5 == a);
+        } else {
+            panic!();
+        }
+
+        //test expression in expression
+        //(+ (+ 1 1 1 1 1) 1)
+        let exp1 = Expression {
+            first: "Add".to_string(),
+            tail: Rc::new(PreValue::Value(Value::List(vec![
+                PreValue::Expr(exp),
+                PreValue::Value(Value::Integer(1)),
+            ]))),
+        };
+
+        if let Value::Integer(a) = exp1.eval(&context) {
+            assert!(6 == a);
         } else {
             panic!();
         }
