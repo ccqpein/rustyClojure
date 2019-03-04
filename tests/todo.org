@@ -1,0 +1,3 @@
+* NodeTree need more methods
+- [ ] new()
+- [ ] generater (hidden first and second from tests)
