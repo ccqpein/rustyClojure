@@ -12,6 +12,7 @@ pub enum Value {
     Nil,
     Integer(i64),
     String(String),
+    Float(f64),
     List(Vec<Value>),
 }
 
