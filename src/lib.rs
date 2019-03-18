@@ -1,3 +1,5 @@
+mod tree_generator;
+
 use std::collections::HashMap;
 use std::rc::Rc;
 
