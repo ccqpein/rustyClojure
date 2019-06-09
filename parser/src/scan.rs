@@ -2,7 +2,7 @@ use std::string::FromUtf8Error;
 
 pub type Token = String;
 
-pub fn scan_file(input: &str) -> Result<Vec<Token>, FromUtf8Error> {
+pub fn scan_str(input: &str) -> Result<Vec<Token>, FromUtf8Error> {
     let mut result: Vec<String> = vec![];
 
     let mut all_bytes = input.as_bytes().to_vec();
@@ -10,7 +10,7 @@ pub fn scan_file(input: &str) -> Result<Vec<Token>, FromUtf8Error> {
     while all_bytes.len() != 0 {
         for ind in 0..all_bytes.len() {
             match all_bytes[ind] {
-                b'(' | b')' | b'[' | b']' | b'{' | b'}' | b'"' => {
+                b'(' | b')' | b'[' | b']' | b'{' | b'}' => {
                     if ind != 0 {
                         let w = all_bytes.drain(0..ind).collect::<Vec<_>>();
                         result.push(String::from_utf8(w)?);
@@ -49,9 +49,9 @@ mod tests {
         // File::open(filepath)?.read_to_string(&mut cont)?;
 
         let cont = "(defun test (a)
-  (print a))";
-        println!("{:?}", scan_file(cont));
-        assert_eq!(scan_file(cont).unwrap().len(), 11);
+  (print \"a\"))";
+        println!("{:?}", scan_str(cont));
+        assert_eq!(scan_str(cont).unwrap().len(), 11);
 
         Ok(())
     }
