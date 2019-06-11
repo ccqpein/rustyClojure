@@ -75,9 +75,13 @@ impl Scope {
         Ok(result)
     }
 
-    //pub fn new_scope_table(&self) -> Result<ScopeTable> {}
+    pub fn new_scope_table<'a, 'b: 'a>(&'b self) -> Result<ScopeTable<'a>> {
+        let mut result: ScopeTable<'a> = HashMap::new();
 
-    fn add_to_scope_table<'b>(&'b self, target: &mut ScopeTable<'b>) {
+        Ok(result)
+    }
+
+    fn add_to_scope_table<'a, 'b: 'a>(&'b self, target: &mut ScopeTable<'a>) {
         target.insert(self.id, self);
     }
 }
@@ -126,5 +130,24 @@ mod tests {
         } else {
             panic!();
         }
+    }
+
+    fn scope_table_generate() {
+        let mut testcase0 = vec![
+            String::from("("),
+            String::from("defun"),
+            String::from("test"),
+            String::from("("),
+            String::from("a"),
+            String::from(")"),
+            String::from("("),
+            String::from("print"),
+            String::from("\"a\""),
+            String::from(")"),
+            String::from(")"),
+        ];
+
+        let a = Scope::from_tokens(0, &mut testcase0).unwrap();
+        let table = a.new_scope_table();
     }
 }
