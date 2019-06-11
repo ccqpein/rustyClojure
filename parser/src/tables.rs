@@ -4,11 +4,14 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind, Result};
 
-lazy_static! {
-    static ref dependency_table: HashMap<u32, &'static str> = HashMap::new();
-}
-
 type ScopeNum = i64;
+type ScopeTable<'a> = HashMap<ScopeNum, &'a Scope>;
+type DependencyTable = HashMap<ScopeNum, Vec<ScopeNum>>;
+
+// lazy_static! {
+//     static ref scope_table: HashMap<ScopeNum, Scope> = HashMap::new();
+//     static ref dependency_table: HashMap<ScopeNum, Vec<ScopeNum>> = HashMap::new();
+// }
 
 #[derive(Debug)]
 pub enum ExpressionNode {
@@ -70,6 +73,12 @@ impl Scope {
         }
 
         Ok(result)
+    }
+
+    //pub fn new_scope_table(&self) -> Result<ScopeTable> {}
+
+    fn add_to_scope_table<'b>(&'b self, target: &mut ScopeTable<'b>) {
+        target.insert(self.id, self);
     }
 }
 
