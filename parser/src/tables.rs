@@ -75,15 +75,22 @@ impl Scope {
         Ok(result)
     }
 
-    pub fn new_scope_table<'a, 'b: 'a>(&'b self) -> Result<ScopeTable<'a>> {
-        let mut result: ScopeTable<'a> = HashMap::new();
-
-        Ok(result)
-    }
+    // pub fn new_scope_table<'a, 'b: 'a>(&'b self) -> Result<ScopeTable<'a>> {
+    //     let mut result: ScopeTable<'a> = HashMap::new();
+    //     self.add_to_scope_table(&mut result);
+    //     Ok(result)
+    // }
 
     fn add_to_scope_table<'a, 'b: 'a>(&'b self, target: &mut ScopeTable<'a>) {
         target.insert(self.id, self);
     }
+}
+
+fn new_scope_table<'a>(scope: &Scope) -> Result<ScopeTable<'a>> {
+    let mut result: ScopeTable<'a> = HashMap::new();
+    let mut this_scope = scope;
+    {}
+    Ok(result)
 }
 
 #[cfg(test)]
