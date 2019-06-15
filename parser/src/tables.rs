@@ -17,7 +17,7 @@ type DependencyTable = HashMap<ScopeNum, Vec<ScopeNum>>;
 pub enum ExpressionNode {
     Nil,
     Scope(Scope),
-    Value(String),
+    Symbol(String),
 }
 
 #[derive(Debug)]
@@ -28,66 +28,94 @@ pub struct Scope {
 }
 
 impl Scope {
-    pub fn from_tokens(id: i64, content: &mut Vec<Token>) -> Result<Scope> {
-        let mut result = Scope {
-            id: id,
-            expression: vec![],
-        };
+    // find end index of )}] of start index of ({[
+    fn find_wrap_parentheses(start: usize, content: &Vec<Token>) -> Result<usize> {
+        if content[start] != "(" {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "First element is not (",
+            ));
+        }
 
-        let leng = content.len();
+        let mut stack = vec![&content[start]];
+        let mut ind = start + 1;
+        while stack.len() != 0 {
+            if ind >= content.len() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    "Find unmatched start parentheses",
+                ));
+            }
+            match content[ind].as_ref() {
+                "(" | "{" | "[" => stack.push(&content[ind]),
+                ")" => {
+                    if stack.pop().unwrap() != "(" {
+                        return Err(Error::new(ErrorKind::InvalidInput, "Find unmatched )"));
+                    }
+                }
+                "}" => {
+                    if stack.pop().unwrap() != "{" {
+                        return Err(Error::new(ErrorKind::InvalidInput, "Find unmatched }"));
+                    }
+                }
+                "]" => {
+                    if stack.pop().unwrap() != "]" {
+                        return Err(Error::new(ErrorKind::InvalidInput, "Find unmatched ]"));
+                    }
+                }
+                _ => {}
+            }
+            ind += 1;
+        }
+        Ok(ind)
+    }
 
+    // content should not have unmatched parentheses
+    fn from_tokens(id: &mut i64, content: &Vec<Token>, ind: usize) -> Result<Scope> {
         //check first token
-        println!("{}, {}, {:?}", leng, id, content);
-        if leng < 1 || &content[0] != "(" {
+        if &content[ind] != "(" {
             return Err(Error::new(ErrorKind::InvalidInput, "Wrong input."));
         }
 
+        Self::find_wrap_parentheses(ind, content)?;
+        *id += 1;
+
+        let mut result = Scope {
+            id: *id,
+            expression: vec![],
+        };
+
         //clean first "("
-        content.drain(..1);
+        let mut ind_inner = ind + 1;
         loop {
-            if content.len() == 0 {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    "Found unmatched \"(\" ",
-                ));
-            }
-            println!("{:?}", content);
-            match content[0].as_str() {
+            match content[ind_inner].as_str() {
                 "(" => {
+                    let end = Self::find_wrap_parentheses(ind_inner, content)?;
+
                     result
                         .expression
                         .push(ExpressionNode::Scope(Self::from_tokens(
-                            result.id + 1,
-                            content,
+                            id, content, ind_inner,
                         )?));
+
+                    ind_inner = end;
                     continue;
                 }
                 ")" => {
-                    if id == 0 && content.len() > 1 {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            "Found unmatched \")\" ",
-                        ));
-                    }
-                    content.drain(..1);
                     break;
                 }
                 //:= this part can write some value checker
-                _ => result
-                    .expression
-                    .push(ExpressionNode::Value(content[0].clone())),
+                _ => {
+                    result
+                        .expression
+                        .push(ExpressionNode::Symbol(content[ind_inner].clone()));
+                    ind_inner += 1;
+                }
             }
-            content.drain(..1);
         }
 
         Ok(result)
     }
-
-    // pub fn new_scope_table<'a, 'b: 'a>(&'b self) -> Result<ScopeTable<'a>> {
-    //     let mut result: ScopeTable<'a> = HashMap::new();
-    //     self.add_to_scope_table(&mut result);
-    //     Ok(result)
-    // }
 
     fn add_to_scope_table<'a, 'b: 'a>(&'b self, target: &mut ScopeTable<'a>) {
         target.insert(self.id, self);
@@ -134,95 +162,48 @@ fn new_scope_table<'a>(scope: &'a Scope) -> Result<ScopeTable<'a>> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::scan::*;
     use super::*;
     use std::error::Error;
 
     #[test]
     fn scope_recursive_test() {
-        let mut testcase0 = vec![
-            String::from("("),
-            String::from("defun"),
-            String::from("test"),
-            String::from("("),
-            String::from("a"),
-            String::from(")"),
-            String::from("("),
-            String::from("print"),
-            String::from("\"a\""),
-            String::from(")"),
-            String::from(")"),
-        ];
+        let testcase0 = scan_str("(defun test (a) (print \"a\"))").unwrap();
 
-        //println!("testcase0: {:#?}", Scope::from_tokens(0, &mut testcase0));
+        let mut start_id = 0;
+        match Scope::from_tokens(&mut start_id, &testcase0, 0) {
+            Ok(r) => println!("testcase0 success: {:?}", r),
+            Err(e) => println!("testcase0 failed: {}", e),
+        }
 
         //if more ) at endding
-        let mut testcase1 = vec![
-            String::from("("),
-            String::from("defun"),
-            String::from("test"),
-            String::from("("),
-            String::from("a"),
-            String::from(")"),
-            String::from("("),
-            String::from("print"),
-            String::from("\"a\""),
-            String::from(")"),
-            String::from(")"),
-            String::from(")"),
-        ];
+        let mut testcase1 = scan_str("(defun a (v) (print \"z\")) (a)").unwrap();
+        start_id = 0;
+        match Scope::from_tokens(&mut start_id, &mut testcase1, 0) {
+            Ok(r) => println!("testcase1 success: {:#?}", r),
+            Err(e) => println!("testcase1 failed: {}", e),
+        }
 
-        // if let Err(e) = Scope::from_tokens(0, &mut testcase1) {
-        //     println!("testcase1: {:?}", e.description());
-        // } else {
-        //     panic!();
-        // }
+        println!(
+            "End parentheses index is {:?}",
+            Scope::find_wrap_parentheses(0, &testcase1) //=> 11, next scope start from 11 too
+        );
 
-        //if more ( at beginning
-        let mut testcase2 = vec![
-            String::from("("),
-            String::from("("),
-            String::from("defun"),
-            String::from("test"),
-            String::from("("),
-            String::from("a"),
-            String::from(")"),
-            String::from("("),
-            String::from("print"),
-            String::from("\"a\""),
-            String::from(")"),
-            String::from(")"),
-            //String::from(")"),
-        ];
+        match Scope::from_tokens(&mut start_id, &mut testcase1, 11) {
+            Ok(r) => println!("testcase1 second part success: {:#?}", r),
+            Err(e) => println!("testcase1 failed: {}", e),
+        }
+    }
 
-        // if let Err(e) = Scope::from_tokens(0, &mut testcase2) {
-        //     println!("testcase2: {:?}", e.description());
-        // } else {
-        //     println!("testcase2: {:?}", Scope::from_tokens(0, &mut testcase2));
-        //     panic!();
-        // }
+    #[test]
+    fn addtional_start_parentheses() {
+        // //if more ( at beginning
+        let testcase2 = scan_str("((defun test (a) (print \"a\"))").unwrap();
 
-        // if more ( also more )
-        let mut testcase3 = vec![
-            String::from("("),
-            String::from("("),
-            String::from("defun"),
-            String::from("test"),
-            String::from("("),
-            String::from("a"),
-            String::from(")"),
-            String::from("("),
-            String::from("print"),
-            String::from("\"a\""),
-            String::from(")"),
-            String::from(")"),
-            String::from(")"),
-        ];
-
-        if let Err(e) = Scope::from_tokens(0, &mut testcase3) {
-            println!("testcase3: {:?}", e.description());
-        } else {
-            println!("testcase3: {:?}", Scope::from_tokens(0, &mut testcase3));
-            panic!();
+        let mut start_id = 0;
+        match Scope::from_tokens(&mut start_id, &testcase2, 0) {
+            Ok(r) => println!("testcase2 success: {:?}", r),
+            Err(e) => println!("testcase2 failed: {}", e),
         }
     }
 
@@ -242,8 +223,8 @@ mod tests {
             String::from(")"),
         ];
 
-        let a = Scope::from_tokens(0, &mut testcase0);
-        println!("{:#?}", a);
-        //println!("{:#?}", new_scope_table(&a));
+        // let mut start_id = 0;
+        // let a = Scope::from_tokens(&mut start_id, &mut testcase0);
+        // println!("{:#?}", a);
     }
 }
