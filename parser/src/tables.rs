@@ -154,7 +154,7 @@ fn new_scope_table<'a>(scope: &'a Scope) -> Result<ScopeTable<'a>> {
         first.add_to_scope_table(&mut result);
         let mut new_children = first.all_children_scopes();
         scope_search_stack.append(&mut new_children);
-        scope_search_stack.drain(1..);
+        scope_search_stack.drain(..1);
     }
 
     Ok(result)
@@ -207,24 +207,14 @@ mod tests {
         }
     }
 
-    //#[test]
+    #[test]
     fn scope_table_generate() {
-        let mut testcase0 = vec![
-            String::from("("),
-            String::from("defun"),
-            String::from("test"),
-            String::from("("),
-            String::from("a"),
-            String::from(")"),
-            String::from("("),
-            String::from("print"),
-            String::from("\"a\""),
-            String::from(")"),
-            String::from(")"),
-        ];
+        let testcase0 = scan_str("(defun test (a) (print \"a\"))").unwrap();
 
-        // let mut start_id = 0;
-        // let a = Scope::from_tokens(&mut start_id, &mut testcase0);
-        // println!("{:#?}", a);
+        let mut start_id = 0;
+        let a = Scope::from_tokens(&mut start_id, &testcase0, 0).unwrap();
+        let scopes_table = new_scope_table(&a);
+        //println!("{:#?}", a);
+        println!("{:#?}", scopes_table);
     }
 }
