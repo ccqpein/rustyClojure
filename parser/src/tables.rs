@@ -4,30 +4,30 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind, Result};
 
-type ScopeNum = i64;
-type ScopeTable<'a> = HashMap<ScopeNum, &'a Scope>;
-type DependencyTable = HashMap<ScopeNum, Vec<ScopeNum>>;
+type SExpressionNum = i64;
+type SExpressionTable<'a> = HashMap<SExpressionNum, &'a SExpression>;
+type DependencyTable = HashMap<SExpressionNum, Vec<SExpressionNum>>;
 
 // lazy_static! {
-//     static ref scope_table: HashMap<ScopeNum, Scope> = HashMap::new();
-//     static ref dependency_table: HashMap<ScopeNum, Vec<ScopeNum>> = HashMap::new();
+//     static ref scope_table: HashMap<SExpressionNum, SExpression> = HashMap::new();
+//     static ref dependency_table: HashMap<SExpressionNum, Vec<SExpressionNum>> = HashMap::new();
 // }
 
 #[derive(Debug)]
 pub enum ExpressionNode {
     Nil,
-    Scope(Scope),
+    SExpression(SExpression),
     Symbol(String),
 }
 
 #[derive(Debug)]
-pub struct Scope {
-    pub id: ScopeNum,
+pub struct SExpression {
+    pub id: SExpressionNum,
 
     pub expression: Vec<ExpressionNode>,
 }
 
-impl Scope {
+impl SExpression {
     // find end index of )}] of start index of ({[
     fn find_wrap_parentheses(start: usize, content: &Vec<Token>) -> Result<usize> {
         if content[start] != "(" {
@@ -71,7 +71,8 @@ impl Scope {
     }
 
     // content should not have unmatched parentheses
-    fn from_tokens(id: &mut i64, content: &Vec<Token>, ind: usize) -> Result<Scope> {
+    // id is total number of scopes
+    pub fn from_tokens(id: &mut i64, content: &Vec<Token>, ind: usize) -> Result<SExpression> {
         //check first token
         if &content[ind] != "(" {
             return Err(Error::new(ErrorKind::InvalidInput, "Wrong input."));
@@ -80,7 +81,7 @@ impl Scope {
         Self::find_wrap_parentheses(ind, content)?;
         *id += 1;
 
-        let mut result = Scope {
+        let mut result = SExpression {
             id: *id,
             expression: vec![],
         };
@@ -94,7 +95,7 @@ impl Scope {
 
                     result
                         .expression
-                        .push(ExpressionNode::Scope(Self::from_tokens(
+                        .push(ExpressionNode::SExpression(Self::from_tokens(
                             id, content, ind_inner,
                         )?));
 
@@ -117,7 +118,7 @@ impl Scope {
         Ok(result)
     }
 
-    fn add_to_scope_table<'a, 'b: 'a>(&'b self, target: &mut ScopeTable<'a>) {
+    fn add_to_scope_table<'a, 'b: 'a>(&'b self, target: &mut SExpressionTable<'a>) {
         target.insert(self.id, self);
     }
 
@@ -125,7 +126,7 @@ impl Scope {
         self.expression
             .iter()
             .filter(|x| {
-                if let ExpressionNode::Scope(_) = x {
+                if let ExpressionNode::SExpression(_) = x {
                     true
                 } else {
                     false
@@ -135,15 +136,15 @@ impl Scope {
     }
 }
 
-fn new_scope_table<'a>(scope: &'a Scope) -> Result<ScopeTable<'a>> {
-    let mut result: ScopeTable<'a> = HashMap::new();
+fn new_scope_table<'a>(scope: &'a SExpression) -> Result<SExpressionTable<'a>> {
+    let mut result: SExpressionTable<'a> = HashMap::new();
     result.insert(scope.id, scope);
 
     let mut scope_search_stack = scope.all_children_scopes();
 
     while scope_search_stack.len() != 0 {
-        let first: &Scope = if let Some(f) = scope_search_stack.first() {
-            if let ExpressionNode::Scope(s) = f {
+        let first: &SExpression = if let Some(f) = scope_search_stack.first() {
+            if let ExpressionNode::SExpression(s) = f {
                 s
             } else {
                 break;
@@ -151,6 +152,7 @@ fn new_scope_table<'a>(scope: &'a Scope) -> Result<ScopeTable<'a>> {
         } else {
             break;
         };
+
         first.add_to_scope_table(&mut result);
         let mut new_children = first.all_children_scopes();
         scope_search_stack.append(&mut new_children);
@@ -160,18 +162,27 @@ fn new_scope_table<'a>(scope: &'a Scope) -> Result<ScopeTable<'a>> {
     Ok(result)
 }
 
+// use recursive to do this
+fn new_dependency_table(scope: &SExpression) -> Result<DependencyTable> {
+    let mut result: DependencyTable = HashMap::new();
+
+    let mut scope_search_stack = scope.all_children_scopes();
+    //:= TODO: here
+    Ok(result)
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::scan::*;
     use super::*;
-    use std::error::Error;
+    //use std::error::Error;
 
     #[test]
     fn scope_recursive_test() {
         let testcase0 = scan_str("(defun test (a) (print \"a\"))").unwrap();
 
         let mut start_id = 0;
-        match Scope::from_tokens(&mut start_id, &testcase0, 0) {
+        match SExpression::from_tokens(&mut start_id, &testcase0, 0) {
             Ok(r) => println!("testcase0 success: {:?}", r),
             Err(e) => println!("testcase0 failed: {}", e),
         }
@@ -179,17 +190,17 @@ mod tests {
         //if more ) at endding
         let mut testcase1 = scan_str("(defun a (v) (print \"z\")) (a)").unwrap();
         start_id = 0;
-        match Scope::from_tokens(&mut start_id, &mut testcase1, 0) {
+        match SExpression::from_tokens(&mut start_id, &mut testcase1, 0) {
             Ok(r) => println!("testcase1 success: {:#?}", r),
             Err(e) => println!("testcase1 failed: {}", e),
         }
 
         println!(
             "End parentheses index is {:?}",
-            Scope::find_wrap_parentheses(0, &testcase1) //=> 11, next scope start from 11 too
+            SExpression::find_wrap_parentheses(0, &testcase1) //=> 11, next scope start from 11 too
         );
 
-        match Scope::from_tokens(&mut start_id, &mut testcase1, 11) {
+        match SExpression::from_tokens(&mut start_id, &mut testcase1, 11) {
             Ok(r) => println!("testcase1 second part success: {:#?}", r),
             Err(e) => println!("testcase1 failed: {}", e),
         }
@@ -201,7 +212,7 @@ mod tests {
         let testcase2 = scan_str("((defun test (a) (print \"a\"))").unwrap();
 
         let mut start_id = 0;
-        match Scope::from_tokens(&mut start_id, &testcase2, 0) {
+        match SExpression::from_tokens(&mut start_id, &testcase2, 0) {
             Ok(r) => println!("testcase2 success: {:?}", r),
             Err(e) => println!("testcase2 failed: {}", e),
         }
@@ -212,7 +223,7 @@ mod tests {
         let testcase0 = scan_str("(defun test (a) (print \"a\"))").unwrap();
 
         let mut start_id = 0;
-        let a = Scope::from_tokens(&mut start_id, &testcase0, 0).unwrap();
+        let a = SExpression::from_tokens(&mut start_id, &testcase0, 0).unwrap();
         let scopes_table = new_scope_table(&a);
         //println!("{:#?}", a);
         println!("{:#?}", scopes_table);
