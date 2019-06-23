@@ -1,5 +1,17 @@
 use super::scan::Token;
-use super::tables::SExpression;
+use super::scan::*;
+use super::tables::{DependencyTable, SExpression, SExpressionTable};
+use std::fs;
 use std::io::Result;
 
-//pub fn make_scopes(tokens: Vec<Token>) -> Result<Scope> {}
+struct ParserTables<'a> {
+    expressionTable: SExpressionTable<'a>,
+    dependencyTable: DependencyTable,
+}
+
+pub fn parse_file<'a>(filename: String) -> Result<ParserTables<'a>> {
+    let contents = fs::read_to_string(filename)?;
+    let tokens = scan_str(&contents);
+    //:= TODO: here
+    Ok()
+}

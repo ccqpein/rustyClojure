@@ -5,8 +5,12 @@ use std::collections::HashMap;
 use std::io::{Error, ErrorKind, Result};
 
 type SExpressionNum = i64;
-type SExpressionTable<'a> = HashMap<SExpressionNum, &'a SExpression>;
-type DependencyTable = HashMap<SExpressionNum, Vec<SExpressionNum>>;
+
+// hashtable to store all SExpression number : SExpression
+pub type SExpressionTable<'a> = HashMap<SExpressionNum, &'a SExpression>;
+
+// hashtable to store each SExpression and its parent scope number
+pub type DependencyTable = HashMap<SExpressionNum, SExpressionNum>;
 
 // lazy_static! {
 //     static ref scope_table: HashMap<SExpressionNum, SExpression> = HashMap::new();
@@ -142,7 +146,7 @@ fn new_scope_table<'a>(scope: &'a SExpression) -> Result<SExpressionTable<'a>> {
 
     let mut scope_search_stack = scope.all_children_scopes();
 
-    while scope_search_stack.len() != 0 {
+    while !scope_search_stack.is_empty() {
         let first: &SExpression = if let Some(f) = scope_search_stack.first() {
             if let ExpressionNode::SExpression(s) = f {
                 s
@@ -166,8 +170,24 @@ fn new_scope_table<'a>(scope: &'a SExpression) -> Result<SExpressionTable<'a>> {
 fn new_dependency_table(scope: &SExpression) -> Result<DependencyTable> {
     let mut result: DependencyTable = HashMap::new();
 
-    let mut scope_search_stack = scope.all_children_scopes();
-    //:= TODO: here
+    let mut scope_search_stack = vec![scope];
+    let mut cache_scope_stack = vec![];
+
+    while !scope_search_stack.is_empty() {
+        cache_scope_stack.clear();
+        for scope in &scope_search_stack {
+            for child in scope.all_children_scopes() {
+                match child {
+                    ExpressionNode::SExpression(s) => {
+                        result.insert(s.id, scope.id);
+                        cache_scope_stack.push(s);
+                    }
+                    _ => (),
+                }
+            }
+        }
+        scope_search_stack = cache_scope_stack.clone();
+    }
     Ok(result)
 }
 
@@ -177,7 +197,7 @@ mod tests {
     use super::*;
     //use std::error::Error;
 
-    #[test]
+    //#[test]
     fn scope_recursive_test() {
         let testcase0 = scan_str("(defun test (a) (print \"a\"))").unwrap();
 
@@ -206,7 +226,7 @@ mod tests {
         }
     }
 
-    #[test]
+    //#[test]
     fn addtional_start_parentheses() {
         // //if more ( at beginning
         let testcase2 = scan_str("((defun test (a) (print \"a\"))").unwrap();
@@ -218,7 +238,7 @@ mod tests {
         }
     }
 
-    #[test]
+    //#[test]
     fn scope_table_generate() {
         let testcase0 = scan_str("(defun test (a) (print \"a\"))").unwrap();
 
@@ -226,6 +246,20 @@ mod tests {
         let a = SExpression::from_tokens(&mut start_id, &testcase0, 0).unwrap();
         let scopes_table = new_scope_table(&a);
         //println!("{:#?}", a);
-        println!("{:#?}", scopes_table);
+        println!("Here is scope table: {:#?}", scopes_table);
+    }
+
+    #[test]
+    fn dependency_table_generate() {
+        let testcase0 = scan_str("(defun test (a) (print (cons 1 2)))").unwrap();
+
+        let mut start_id = 0;
+        let a = SExpression::from_tokens(&mut start_id, &testcase0, 0).unwrap();
+
+        let scopes_table = new_scope_table(&a);
+        let dependency_table = new_dependency_table(&a);
+
+        println!("Here is scope table: {:#?}", scopes_table);
+        println!("Here is dependency table: {:#?}", dependency_table);
     }
 }
