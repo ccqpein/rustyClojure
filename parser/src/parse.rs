@@ -11,8 +11,8 @@ struct ParserTables<'a> {
 
 pub fn parse_file<'a>(filename: String) -> Result<ParserTables<'a>> {
     let contents = fs::read_to_string(filename)?;
-    let tokens = scan_str(&contents);
+    let tokens = scan_str(&contents)?;
     //:= TODO: here
-    SExpression::from_tokens(0, contents, 0);
+    SExpression::from_tokens(0, tokens, 0);
     Ok()
 }
