@@ -1,8 +1,7 @@
-use std::io;
 use std::string::FromUtf8Error;
 pub type Token = String;
 
-pub fn scan_str(input: &str) -> io::Result<Vec<Token>> {
+pub fn scan_str(input: &str) -> Result<Vec<Token>, FromUtf8Error> {
     let mut result: Vec<String> = vec![];
 
     let mut all_bytes = input.as_bytes().to_vec();

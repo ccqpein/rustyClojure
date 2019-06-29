@@ -74,7 +74,6 @@ impl SExpression {
         Ok(ind)
     }
 
-    // content should not have unmatched parentheses
     // id is total number of scopes
     pub fn from_tokens(id: &mut i64, content: &Vec<Token>, ind: usize) -> Result<SExpression> {
         //check first token
@@ -83,12 +82,12 @@ impl SExpression {
         }
 
         Self::find_wrap_parentheses(ind, content)?;
-        *id += 1;
 
         let mut result = SExpression {
             id: *id,
             expression: vec![],
         };
+        *id += 1;
 
         //clean first "("
         let mut ind_inner = ind + 1;
@@ -140,7 +139,7 @@ impl SExpression {
     }
 }
 
-fn new_scope_table<'a>(scope: &'a SExpression) -> Result<SExpressionTable<'a>> {
+pub fn new_expression_table<'a>(scope: &'a SExpression) -> Result<SExpressionTable<'a>> {
     let mut result: SExpressionTable<'a> = HashMap::new();
     result.insert(scope.id, scope);
 
@@ -167,7 +166,7 @@ fn new_scope_table<'a>(scope: &'a SExpression) -> Result<SExpressionTable<'a>> {
 }
 
 // use recursive to do this
-fn new_dependency_table(scope: &SExpression) -> Result<DependencyTable> {
+pub fn new_dependency_table(scope: &SExpression) -> Result<DependencyTable> {
     let mut result: DependencyTable = HashMap::new();
 
     let mut scope_search_stack = vec![scope];
@@ -238,25 +237,37 @@ mod tests {
         }
     }
 
+    #[test]
+    fn addtional_start_and_end_parentheses() {
+        // //if more ( at beginning
+        let testcase3 = scan_str("((defun test (a) (print \"a\")))").unwrap();
+
+        let mut start_id = 0;
+        match SExpression::from_tokens(&mut start_id, &testcase3, 0) {
+            Ok(r) => println!("testcase3 success: {:#?}", r),
+            Err(e) => println!("testcase3 failed: {}", e),
+        }
+    }
+
     //#[test]
     fn scope_table_generate() {
         let testcase0 = scan_str("(defun test (a) (print \"a\"))").unwrap();
 
         let mut start_id = 0;
         let a = SExpression::from_tokens(&mut start_id, &testcase0, 0).unwrap();
-        let scopes_table = new_scope_table(&a);
+        let scopes_table = new_expression_table(&a);
         //println!("{:#?}", a);
         println!("Here is scope table: {:#?}", scopes_table);
     }
 
-    #[test]
+    //#[test]
     fn dependency_table_generate() {
         let testcase0 = scan_str("(defun test (a) (print (cons 1 2)))").unwrap();
 
         let mut start_id = 0;
         let a = SExpression::from_tokens(&mut start_id, &testcase0, 0).unwrap();
 
-        let scopes_table = new_scope_table(&a);
+        let scopes_table = new_expression_table(&a);
         let dependency_table = new_dependency_table(&a);
 
         println!("Here is scope table: {:#?}", scopes_table);
