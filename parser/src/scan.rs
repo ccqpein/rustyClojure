@@ -9,7 +9,7 @@ pub fn scan_str(input: &str) -> Result<Vec<Token>, FromUtf8Error> {
     while all_bytes.len() != 0 {
         for ind in 0..all_bytes.len() {
             match all_bytes[ind] {
-                b'(' | b')' | b'[' | b']' | b'{' | b'}' => {
+                b'(' | b')' | b'[' | b']' | b'{' | b'}' | b'\n' => {
                     if ind != 0 {
                         let w = all_bytes.drain(0..ind).collect::<Vec<_>>();
                         result.push(String::from_utf8(w)?);
@@ -18,7 +18,7 @@ pub fn scan_str(input: &str) -> Result<Vec<Token>, FromUtf8Error> {
                     result.push(String::from_utf8(w)?);
                     break;
                 }
-                b'\n' | b' ' | b'\t' => {
+                b' ' | b'\t' => {
                     if ind != 0 {
                         let w = all_bytes.drain(0..ind).collect::<Vec<_>>();
                         result.push(String::from_utf8(w)?);
@@ -50,8 +50,19 @@ mod tests {
         let cont = "(defun test (a)
   (print \"a\"))";
         println!("{:?}", scan_str(cont));
-        assert_eq!(scan_str(cont).unwrap().len(), 11);
+        assert_eq!(scan_str(cont).unwrap().len(), 12);
 
         Ok(())
+    }
+
+    #[test]
+    fn test_comments_inside() {
+        let cont = "(defun test (a)
+;aaaaaaa
+; ddd
+;; asd
+(print \"a\"))
+)";
+        println!("{:?}", scan_str(cont));
     }
 }

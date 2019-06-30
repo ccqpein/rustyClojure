@@ -1,5 +1,4 @@
 use super::scan::Token;
-use lazy_static::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind, Result};
@@ -12,16 +11,13 @@ pub type SExpressionTable<'a> = HashMap<SExpressionNum, &'a SExpression>;
 // hashtable to store each SExpression and its parent scope number
 pub type DependencyTable = HashMap<SExpressionNum, SExpressionNum>;
 
-// lazy_static! {
-//     static ref scope_table: HashMap<SExpressionNum, SExpression> = HashMap::new();
-//     static ref dependency_table: HashMap<SExpressionNum, Vec<SExpressionNum>> = HashMap::new();
-// }
-
 #[derive(Debug)]
 pub enum ExpressionNode {
     Nil,
     SExpression(SExpression),
     Symbol(String),
+
+    Comments(String),
 }
 
 #[derive(Debug)]
@@ -74,6 +70,16 @@ impl SExpression {
         Ok(ind)
     }
 
+    fn pick_comment_out(content: &Vec<Token>, ind: &mut usize, end_mark: String) -> ExpressionNode {
+        let mut cache = vec![];
+        while content[*ind] != end_mark {
+            cache.push(content[*ind].clone());
+            *ind += 1;
+        }
+
+        ExpressionNode::Comments(cache.join(""))
+    }
+
     // id is total number of scopes
     pub fn from_tokens(id: &mut i64, content: &Vec<Token>, ind: usize) -> Result<SExpression> {
         //check first token
@@ -108,12 +114,22 @@ impl SExpression {
                 ")" => {
                     break;
                 }
-                //:= this part can write some value checker
-                _ => {
-                    result
-                        .expression
-                        .push(ExpressionNode::Symbol(content[ind_inner].clone()));
+                "\n" => {
                     ind_inner += 1;
+                }
+                _ => {
+                    if content[ind_inner].starts_with(";") {
+                        result.expression.push(Self::pick_comment_out(
+                            content,
+                            &mut ind_inner,
+                            String::from("\n"),
+                        ))
+                    } else {
+                        result
+                            .expression
+                            .push(ExpressionNode::Symbol(content[ind_inner].clone()));
+                        ind_inner += 1;
+                    }
                 }
             }
         }
@@ -237,7 +253,7 @@ mod tests {
         }
     }
 
-    #[test]
+    //#[test]
     fn addtional_start_and_end_parentheses() {
         // //if more ( at beginning
         let testcase3 = scan_str("((defun test (a) (print \"a\")))").unwrap();
@@ -273,4 +289,22 @@ mod tests {
         println!("Here is scope table: {:#?}", scopes_table);
         println!("Here is dependency table: {:#?}", dependency_table);
     }
+
+    #[test]
+    fn find_comments() {
+        let testcase0 = scan_str(
+            "(defun test ()
+;aaaaaaa
+;; abs
+;;bbb
+
+(print \"a\"))",
+        )
+        .unwrap();
+        let mut start_id = 0;
+        let a = SExpression::from_tokens(&mut start_id, &testcase0, 0).unwrap();
+
+        println!("{:#?}", a);
+    }
+
 }
