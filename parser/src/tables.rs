@@ -1,4 +1,5 @@
 use super::scan::Token;
+use lazy_static::lazy_static;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind, Result};
@@ -10,6 +11,44 @@ pub type SExpressionTable<'a> = HashMap<SExpressionNum, &'a SExpression>;
 
 // hashtable to store each SExpression and its parent scope number
 pub type DependencyTable = HashMap<SExpressionNum, SExpressionNum>;
+
+// lazy_static! {
+//     static ref comment_table: HashMap<&'static str, &'static str> = {
+//         let mut m = HashMap::new();
+//         m.insert(";", "\n");
+//         m.insert("#|", "|#");
+//         m
+//     };
+// }
+
+pub struct CommentMarkPair {
+    commentsPair: HashMap<String, String>, // start-end
+}
+
+impl CommentMarkPair {
+    pub fn new() -> Self {
+        CommentMarkPair {
+            commentsPair: HashMap::new(),
+        }
+    }
+
+    pub fn insert(&mut self, key: String, val: String) {
+        self.commentsPair.insert(key, val);
+    }
+
+    pub fn if_comment(&self, this: &Token) -> Option<&String> {
+        for (k, v) in self.commentsPair.iter() {
+            if this.starts_with(k) {
+                return Some(v);
+            }
+        }
+        None
+    }
+
+    fn find_end(&self, start: &str) -> Option<&String> {
+        self.commentsPair.get(start)
+    }
+}
 
 #[derive(Debug)]
 pub enum ExpressionNode {
@@ -70,18 +109,54 @@ impl SExpression {
         Ok(ind)
     }
 
-    fn pick_comment_out(content: &Vec<Token>, ind: &mut usize, end_mark: String) -> ExpressionNode {
+    // give comment mark and end mark, return comment picker
+    fn pick_comment_out_func(
+        end_mark: String,
+    ) -> impl Fn(&Vec<Token>, &mut usize) -> ExpressionNode {
+        move |content: &Vec<Token>, ind: &mut usize| -> ExpressionNode {
+            let mut cache = vec![];
+
+            loop {
+                cache.push(content[*ind].clone());
+                *ind += 1;
+                if content[*ind] == end_mark {
+                    cache.push(content[*ind].clone());
+                    *ind += 1;
+                    break;
+                }
+            }
+
+            ExpressionNode::Comments(cache.join(""))
+        }
+    }
+
+    fn pick_comment_out(
+        content: &Vec<Token>,
+        ind: &mut usize,
+        end_mark: &String,
+    ) -> ExpressionNode {
         let mut cache = vec![];
-        while content[*ind] != end_mark {
+
+        loop {
             cache.push(content[*ind].clone());
             *ind += 1;
+            if content[*ind] == *end_mark {
+                cache.push(content[*ind].clone());
+                *ind += 1;
+                break;
+            }
         }
 
         ExpressionNode::Comments(cache.join(""))
     }
 
     // id is total number of scopes
-    pub fn from_tokens(id: &mut i64, content: &Vec<Token>, ind: usize) -> Result<SExpression> {
+    pub fn from_tokens(
+        id: &mut i64,
+        content: &Vec<Token>,
+        ind: usize,
+        comment_mark: &CommentMarkPair,
+    ) -> Result<SExpression> {
         //check first token
         if &content[ind] != "(" {
             return Err(Error::new(ErrorKind::InvalidInput, "Wrong input."));
@@ -105,7 +180,10 @@ impl SExpression {
                     result
                         .expression
                         .push(ExpressionNode::SExpression(Self::from_tokens(
-                            id, content, ind_inner,
+                            id,
+                            content,
+                            ind_inner,
+                            comment_mark,
                         )?));
 
                     ind_inner = end;
@@ -118,11 +196,12 @@ impl SExpression {
                     ind_inner += 1;
                 }
                 _ => {
-                    if content[ind_inner].starts_with(";") {
+                    let end_mark = comment_mark.if_comment(&content[ind_inner]);
+                    if let Some(end_) = end_mark {
                         result.expression.push(Self::pick_comment_out(
                             content,
                             &mut ind_inner,
-                            String::from("\n"),
+                            end_,
                         ))
                     } else {
                         result
@@ -214,10 +293,13 @@ mod tests {
 
     //#[test]
     fn scope_recursive_test() {
+        let mut comment_key_pair = CommentMarkPair::new();
+        comment_key_pair.insert(String::from(";"), String::from("\n"));
+
         let testcase0 = scan_str("(defun test (a) (print \"a\"))").unwrap();
 
         let mut start_id = 0;
-        match SExpression::from_tokens(&mut start_id, &testcase0, 0) {
+        match SExpression::from_tokens(&mut start_id, &testcase0, 0, &comment_key_pair) {
             Ok(r) => println!("testcase0 success: {:?}", r),
             Err(e) => println!("testcase0 failed: {}", e),
         }
@@ -225,7 +307,7 @@ mod tests {
         //if more ) at endding
         let mut testcase1 = scan_str("(defun a (v) (print \"z\")) (a)").unwrap();
         start_id = 0;
-        match SExpression::from_tokens(&mut start_id, &mut testcase1, 0) {
+        match SExpression::from_tokens(&mut start_id, &mut testcase1, 0, &comment_key_pair) {
             Ok(r) => println!("testcase1 success: {:#?}", r),
             Err(e) => println!("testcase1 failed: {}", e),
         }
@@ -235,7 +317,7 @@ mod tests {
             SExpression::find_wrap_parentheses(0, &testcase1) //=> 11, next scope start from 11 too
         );
 
-        match SExpression::from_tokens(&mut start_id, &mut testcase1, 11) {
+        match SExpression::from_tokens(&mut start_id, &mut testcase1, 11, &comment_key_pair) {
             Ok(r) => println!("testcase1 second part success: {:#?}", r),
             Err(e) => println!("testcase1 failed: {}", e),
         }
@@ -243,11 +325,14 @@ mod tests {
 
     //#[test]
     fn addtional_start_parentheses() {
+        let mut comment_key_pair = CommentMarkPair::new();
+        comment_key_pair.insert(String::from(";"), String::from("\n"));
+
         // //if more ( at beginning
         let testcase2 = scan_str("((defun test (a) (print \"a\"))").unwrap();
 
         let mut start_id = 0;
-        match SExpression::from_tokens(&mut start_id, &testcase2, 0) {
+        match SExpression::from_tokens(&mut start_id, &testcase2, 0, &comment_key_pair) {
             Ok(r) => println!("testcase2 success: {:?}", r),
             Err(e) => println!("testcase2 failed: {}", e),
         }
@@ -255,11 +340,14 @@ mod tests {
 
     //#[test]
     fn addtional_start_and_end_parentheses() {
+        let mut comment_key_pair = CommentMarkPair::new();
+        comment_key_pair.insert(String::from(";"), String::from("\n"));
+
         // //if more ( at beginning
         let testcase3 = scan_str("((defun test (a) (print \"a\")))").unwrap();
 
         let mut start_id = 0;
-        match SExpression::from_tokens(&mut start_id, &testcase3, 0) {
+        match SExpression::from_tokens(&mut start_id, &testcase3, 0, &comment_key_pair) {
             Ok(r) => println!("testcase3 success: {:#?}", r),
             Err(e) => println!("testcase3 failed: {}", e),
         }
@@ -267,10 +355,13 @@ mod tests {
 
     //#[test]
     fn scope_table_generate() {
+        let mut comment_key_pair = CommentMarkPair::new();
+        comment_key_pair.insert(String::from(";"), String::from("\n"));
+
         let testcase0 = scan_str("(defun test (a) (print \"a\"))").unwrap();
 
         let mut start_id = 0;
-        let a = SExpression::from_tokens(&mut start_id, &testcase0, 0).unwrap();
+        let a = SExpression::from_tokens(&mut start_id, &testcase0, 0, &comment_key_pair).unwrap();
         let scopes_table = new_expression_table(&a);
         //println!("{:#?}", a);
         println!("Here is scope table: {:#?}", scopes_table);
@@ -278,10 +369,13 @@ mod tests {
 
     //#[test]
     fn dependency_table_generate() {
+        let mut comment_key_pair = CommentMarkPair::new();
+        comment_key_pair.insert(String::from(";"), String::from("\n"));
+
         let testcase0 = scan_str("(defun test (a) (print (cons 1 2)))").unwrap();
 
         let mut start_id = 0;
-        let a = SExpression::from_tokens(&mut start_id, &testcase0, 0).unwrap();
+        let a = SExpression::from_tokens(&mut start_id, &testcase0, 0, &comment_key_pair).unwrap();
 
         let scopes_table = new_expression_table(&a);
         let dependency_table = new_dependency_table(&a);
@@ -290,8 +384,11 @@ mod tests {
         println!("Here is dependency table: {:#?}", dependency_table);
     }
 
-    #[test]
+    //#[test]
     fn find_comments() {
+        let mut comment_key_pair = CommentMarkPair::new();
+        comment_key_pair.insert(String::from(";"), String::from("\n"));
+
         let testcase0 = scan_str(
             "(defun test ()
 ;aaaaaaa
@@ -302,9 +399,30 @@ mod tests {
         )
         .unwrap();
         let mut start_id = 0;
-        let a = SExpression::from_tokens(&mut start_id, &testcase0, 0).unwrap();
+        let a = SExpression::from_tokens(&mut start_id, &testcase0, 0, &comment_key_pair).unwrap();
 
         println!("{:#?}", a);
     }
 
+    #[test]
+    fn find_comments2() {
+        let mut comment_key_pair = CommentMarkPair::new();
+        comment_key_pair.insert(String::from(";"), String::from("\n"));
+        comment_key_pair.insert(String::from("#|"), String::from("|#"));
+
+        let testcase0 = scan_str(
+            "(#|
+jisdjfijsifjdsi
+|#
+(defun test ()
+;; aaa
+(print \"a\")))",
+        )
+        .unwrap();
+        let mut start_id = 0;
+        println!("{:?}", testcase0);
+        let a = SExpression::from_tokens(&mut start_id, &testcase0, 0, &comment_key_pair).unwrap();
+
+        println!("{:#?}", a);
+    }
 }
