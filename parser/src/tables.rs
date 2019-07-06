@@ -98,7 +98,7 @@ impl SExpression {
                     }
                 }
                 "]" => {
-                    if stack.pop().unwrap() != "]" {
+                    if stack.pop().unwrap() != "[" {
                         return Err(Error::new(ErrorKind::InvalidInput, "Find unmatched ]"));
                     }
                 }
