@@ -4,15 +4,30 @@ use super::tables::{
     new_dependency_table, new_expression_table, CommentMarkPair, DependencyTable, SExpression,
     SExpressionTable,
 };
+use lazy_static::lazy_static;
+use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 use std::io;
 use std::io::Result;
 
+lazy_static! {
+    static ref filetype_comment_table: HashMap<&'static str, CommentMarkPair> = {
+        let mut fm = HashMap::new();
+        let mut m = CommentMarkPair::new();
+
+        m.insert(String::from(";"), String::from("\n"));
+        m.insert(String::from("#|"), String::from("|#"));
+
+        fm.insert("lisp", m);
+        fm
+    };
+}
+
 #[derive(Debug)]
 pub struct ParserTables<'a> {
     pub expressionTable: SExpressionTable<'a>,
-    dependencyTable: DependencyTable,
+    pub dependencyTable: DependencyTable,
 }
 
 pub fn parse_file<'a>(filename: &str) -> Result<SExpression> {
@@ -28,11 +43,8 @@ pub fn parse_file<'a>(filename: &str) -> Result<SExpression> {
 
     //dbg!(&tokens);
     let mut start_id: i64 = 0;
-    let mut comment_key_pair = CommentMarkPair::new();
-
-    //:= hard code now
-    comment_key_pair.insert(String::from(";"), String::from("\n"));
-    comment_key_pair.insert(String::from("#|"), String::from("|#"));
+    //:= TODO: need delete unwrap()
+    let comment_key_pair = filetype_comment_table.get("lisp").unwrap();
 
     Ok(SExpression::from_tokens(
         &mut start_id,

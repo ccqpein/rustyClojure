@@ -1,6 +1,4 @@
 use super::scan::Token;
-use lazy_static::lazy_static;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind, Result};
 
@@ -11,15 +9,6 @@ pub type SExpressionTable<'a> = HashMap<SExpressionNum, &'a SExpression>;
 
 // hashtable to store each SExpression and its parent scope number
 pub type DependencyTable = HashMap<SExpressionNum, SExpressionNum>;
-
-// lazy_static! {
-//     static ref comment_table: HashMap<&'static str, &'static str> = {
-//         let mut m = HashMap::new();
-//         m.insert(";", "\n");
-//         m.insert("#|", "|#");
-//         m
-//     };
-// }
 
 pub struct CommentMarkPair {
     commentsPair: HashMap<String, String>, // start-end
@@ -43,10 +32,6 @@ impl CommentMarkPair {
             }
         }
         None
-    }
-
-    fn find_end(&self, start: &str) -> Option<&String> {
-        self.commentsPair.get(start)
     }
 }
 
