@@ -26,8 +26,8 @@ lazy_static! {
 
 #[derive(Debug)]
 pub struct ParserTables<'a> {
-    pub expressionTable: SExpressionTable<'a>,
-    pub dependencyTable: DependencyTable,
+    pub expression_table: SExpressionTable<'a>,
+    pub dependency_table: DependencyTable,
 }
 
 pub fn parse_file<'a>(filename: &str) -> Result<SExpression> {
@@ -43,8 +43,16 @@ pub fn parse_file<'a>(filename: &str) -> Result<SExpression> {
 
     //dbg!(&tokens);
     let mut start_id: i64 = 0;
-    //:= TODO: need delete unwrap()
-    let comment_key_pair = filetype_comment_table.get("lisp").unwrap();
+
+    //:= TODO: for more languages instead of just for lisp
+    let comment_key_pair = if let Some(p) = filetype_comment_table.get("lisp") {
+        p
+    } else {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "Cannot find comment key pair.",
+        ));
+    };
 
     Ok(SExpression::from_tokens(
         &mut start_id,
@@ -56,7 +64,7 @@ pub fn parse_file<'a>(filename: &str) -> Result<SExpression> {
 
 pub fn make_parser_table<'a>(se: &'a SExpression) -> Result<ParserTables<'a>> {
     Ok(ParserTables {
-        expressionTable: new_expression_table(se)?,
-        dependencyTable: new_dependency_table(se)?,
+        expression_table: new_expression_table(se)?,
+        dependency_table: new_dependency_table(se)?,
     })
 }
