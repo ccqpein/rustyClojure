@@ -17,7 +17,7 @@ fn main() -> Result<()> {
         Some(i) => {
             let se = parser::parse_file(i)?;
             let tables = parser::make_parser_table(&se)?;
-            println!("{:#?}", tables.expressionTable);
+            println!("{:#?}", tables.expression_table.get(&(0 as i64)));
             Ok(())
         }
         None => Ok(()),
