@@ -5,7 +5,8 @@ authors = ["ccQpein"]
 edition = "2018"
 
 [workspace]
-members = [".", "parser"]
+members = [".", "parser", "generator"]
 
 [dependencies]
 parser = {path = "parser"}
+generator = {path = "generator"}

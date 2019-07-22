@@ -1,0 +1,5 @@
+[package]
+name = "generator"
+version = "0.1.0"
+authors = ["ccQpein"]
+edition = "2018"
