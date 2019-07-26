@@ -1,5 +1,4 @@
 use clap::{App, Arg};
-use parser::*;
 use std::io::Result;
 
 fn main() -> Result<()> {

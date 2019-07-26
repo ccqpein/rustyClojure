@@ -1,7 +1,0 @@
-* Parser
-
-Transfer Lisp code to serveral tables. Let generators to make new code.
-
-** TODO need add comment symbols [0/2]
- - [ ] need give comment's key pair
- - [ ] 
