@@ -35,7 +35,7 @@ impl CommentMarkPair {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Hash, Eq)]
 pub enum ExpressionNode {
     Nil,
     SExpression(SExpression),
@@ -44,7 +44,7 @@ pub enum ExpressionNode {
     Comments(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Hash, Eq)]
 pub struct SExpression {
     pub id: SExpressionNum,
 

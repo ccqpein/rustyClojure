@@ -30,7 +30,7 @@ pub struct ParserTables<'a> {
     pub dependency_table: DependencyTable,
 }
 
-pub fn parse_file<'a>(filename: &str) -> Result<SExpression> {
+pub fn parse_file(filename: &str) -> Result<SExpression> {
     let contents = fs::read_to_string(filename)?;
     let mut tokens = match scan_str(&contents) {
         Ok(tokens) => tokens,
