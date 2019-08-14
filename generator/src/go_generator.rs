@@ -28,7 +28,7 @@ impl super::Generator for GoGenerator {
 }
 
 impl GoGenerator {
-    fn start_at(&self, ind: &tables::SExpressionNum) -> String {
+    fn start_at(&self, ind: &i64) -> String {
         String::new()
     }
 }
