@@ -1,11 +1,20 @@
 use parser::parse_file;
 use parser::tables::*;
 use std::collections::HashMap;
+use std::io::Result;
 
 // generator traits
 // generator impl
 
+struct GoCode {}
+
 struct GoTemplate {}
+
+impl GoTemplate {
+    fn template_expand(&self, &Vec<SExpression>) -> Result<GoCode> {
+        //:= from here
+    }
+}
 
 struct GoTemplates {}
 
@@ -14,11 +23,7 @@ struct GoGenerator {
     user_space_definition: HashMap<ExpressionNode, String>, //:= TODO: maybe not string
 }
 
-impl GoGenerator {
-    fn start_at(&self, ind: &i64) -> String {
-        String::new()
-    }
-}
+impl GoGenerator {}
 
 //:= TODO: need tamplate engine to finish this
 // impl super::Generator for GoGenerator {
