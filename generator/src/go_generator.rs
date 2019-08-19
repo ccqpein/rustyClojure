@@ -11,12 +11,28 @@ struct GoCode {}
 struct GoTemplate {}
 
 impl GoTemplate {
-    fn template_expand(&self, &Vec<SExpression>) -> Result<GoCode> {
+    fn template_expand(&self, x: &Vec<SExpression>, y:) -> Result<GoCode> {
         //:= from here
+        let keyword = x[0];
+        
     }
 }
 
-struct GoTemplates {}
+struct GoTemplates {
+}
+
+impl GoTemplates{
+    fn template_expand(&self, x: &Vec<SExpression>) -> Result<GoCode>{
+        let keyw = x[0];
+        let templ = self.find_template(keyw);
+
+        templ
+    }
+
+    fn find_template(&self, keyw:SExpression) -> Result<GoTemplate> {
+        
+    }
+}
 
 struct GoGenerator {
     keywords_and_temp: HashMap<ExpressionNode, String>, //:= TODO: need find template module for this
