@@ -6,54 +6,70 @@ use std::io::Result;
 // generator traits
 // generator impl
 
+#[derive(Debug)]
 struct GoCode {}
 
-struct GoTemplate {}
+trait GoTemplate {
+    fn expand(&self, x: &Vec<ExpressionNode>) -> Result<GoCode>;
+}
 
-impl GoTemplate {
-    fn template_expand(&self, x: &Vec<SExpression>, y:) -> Result<GoCode> {
-        //:= from here
-        let keyword = x[0];
-        
+// func keyword of Go
+struct Func {}
+
+impl GoTemplate for Func {
+    fn expand(&self, x: &Vec<ExpressionNode>) -> Result<GoCode> {
+        //:= start to impl here
+
+        Ok(GoCode {})
     }
 }
 
-struct GoTemplates {
-}
+struct GoTemplates {}
 
-impl GoTemplates{
-    fn template_expand(&self, x: &Vec<SExpression>) -> Result<GoCode>{
-        let keyw = x[0];
-        let templ = self.find_template(keyw);
+impl GoTemplates {
+    fn template_expand(&self, x: &SExpression) -> Result<GoCode> {
+        let keyw = x.expression[0].clone();
+        let templ = self.find_template(keyw)?;
 
-        templ
+        let bodys = x
+            .expression
+            .clone()
+            .drain(1..)
+            .collect::<Vec<ExpressionNode>>();
+        templ.expand(&bodys)
     }
 
-    fn find_template(&self, keyw:SExpression) -> Result<GoTemplate> {
-        
+    fn find_template(&self, _keyw: ExpressionNode) -> Result<impl GoTemplate> {
+        Ok(Func {})
     }
 }
 
-struct GoGenerator {
-    keywords_and_temp: HashMap<ExpressionNode, String>, //:= TODO: need find template module for this
-    user_space_definition: HashMap<ExpressionNode, String>, //:= TODO: maybe not string
-}
-
-impl GoGenerator {}
-
-//:= TODO: need tamplate engine to finish this
-// impl super::Generator for GoGenerator {
-//     type Template = String;
-//     type Keyword = ExpressionNode;
-
-//     type Result = String;
-
-//     fn keyword_template(&self, k: &Self::Keyword) -> String {
-//         self.keywords_and_temp.get(k).unwrap().to_string()
-//     }
-
-//     //:= fake implenment
-//     fn match_template(&self, t: &String, se: &SExpression) -> String {
-//         String::new()
-//     }
+// struct GoGenerator {
+//     keywords_and_temp: HashMap<ExpressionNode, String>, //:= TODO: need find template module for this
+//     user_space_definition: HashMap<ExpressionNode, String>, //:= TODO: maybe not string
 // }
+
+// impl GoGenerator {}
+
+// Tests below
+#[cfg(test)]
+mod test {
+
+    use super::*;
+    use parser::parse_file;
+    use parser::scan::scan_str;
+    use parser::tables::*;
+
+    fn test_func() {
+        let mut comment_key_pair = CommentMarkPair::new();
+        comment_key_pair.insert(String::from(";"), String::from("\n"));
+
+        let mut start_id = 0;
+        let testcase0 = scan_str("(defun test (a b) (print a) (print b))").unwrap();
+        let expression0 =
+            SExpression::from_tokens(&mut start_id, &testcase0, 0, &comment_key_pair).unwrap();
+
+        let templates = GoTemplates {};
+        println!("{:?}", templates.template_expand(&expression0));
+    }
+}
