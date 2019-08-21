@@ -6,42 +6,73 @@ use std::io::Result;
 // generator traits
 // generator impl
 
-#[derive(Debug)]
-enum GoCode {
-    FuncCode {
-        name: String,
-        argvs: Vec<String>,
-        returnV: Vec<String>,
-        body: Vec<String>,
-    },
+trait GoCode {
+    fn to_string(&self) -> String;
 }
 
-trait GoTemplate {
-    fn expand(&self, x: &Vec<ExpressionNode>) -> Result<GoCode>;
+#[derive(Debug)]
+struct FuncCode {
+    name: String,
+    argvs: Vec<String>,
+    returnV: Vec<String>,
+    body: Vec<String>,
+}
+
+impl FuncCode {
+    fn new() -> Self {
+        FuncCode {
+            name: String::new(),
+            argvs: vec![],
+            returnV: vec![],
+            body: vec![],
+        }
+    }
+}
+
+impl GoCode for FuncCode {
+    fn to_string(&self) -> String {
+        String::new()
+    }
 }
 
 // func keyword of Go
 struct Func {}
 
+trait GoTemplate {
+    fn expand(&self, x: &Vec<ExpressionNode>) -> Result<Box<dyn GoCode>>;
+}
+
 impl GoTemplate for Func {
-    fn expand(&self, x: &Vec<ExpressionNode>) -> Result<GoCode> {
+    fn expand(&self, x: &Vec<ExpressionNode>) -> Result<Box<dyn GoCode>> {
         //:= start to impl here
-        for n in x {
+        let mut f = FuncCode::new();
+        for (ind, n) in x.iter().enumerate() {
             match n {
-                ExpressionNode::Symbol(s) => (),
-                ExpressionNode::SExpression(e) => (),
+                ExpressionNode::Symbol(s) => {
+                    match ind {
+                        // function name
+                        0 => f.name = s.clone(),
+                        _ => (),
+                    }
+                }
+                ExpressionNode::SExpression(e) => {
+                    match ind {
+                        1 => f.argvs = vec![], //:= TODO:
+                        _ => (),
+                    }
+                }
                 _ => (),
             }
         }
 
-        Ok(GoCode::FuncCode {})
+        Ok(Box::new(f))
     }
 }
 
 struct GoTemplates {}
 
 impl GoTemplates {
-    fn template_expand(&self, x: &SExpression) -> Result<GoCode> {
+    fn template_expand(&self, x: &SExpression) -> Result<Box<dyn GoCode>> {
         let keyw = x.expression[0].clone();
         let templ = self.find_template(keyw)?;
 
@@ -84,6 +115,6 @@ mod test {
             SExpression::from_tokens(&mut start_id, &testcase0, 0, &comment_key_pair).unwrap();
 
         let templates = GoTemplates {};
-        println!("{:?}", templates.template_expand(&expression0));
+        //println!("{:?}", templates.template_expand(&expression0));
     }
 }
