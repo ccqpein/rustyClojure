@@ -7,7 +7,14 @@ use std::io::Result;
 // generator impl
 
 #[derive(Debug)]
-struct GoCode {}
+enum GoCode {
+    FuncCode {
+        name: String,
+        argvs: Vec<String>,
+        returnV: Vec<String>,
+        body: Vec<String>,
+    },
+}
 
 trait GoTemplate {
     fn expand(&self, x: &Vec<ExpressionNode>) -> Result<GoCode>;
@@ -19,8 +26,15 @@ struct Func {}
 impl GoTemplate for Func {
     fn expand(&self, x: &Vec<ExpressionNode>) -> Result<GoCode> {
         //:= start to impl here
+        for n in x {
+            match n {
+                ExpressionNode::Symbol(s) => (),
+                ExpressionNode::SExpression(e) => (),
+                _ => (),
+            }
+        }
 
-        Ok(GoCode {})
+        Ok(GoCode::FuncCode {})
     }
 }
 
