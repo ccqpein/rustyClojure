@@ -57,7 +57,7 @@ impl GoTemplate for Func {
                 }
                 ExpressionNode::SExpression(e) => {
                     match ind {
-                        1 => f.argvs = vec![], //:= TODO:
+                        1 => f.argvs = vec![], //:= TODO: use ind to determine which is which
                         _ => (),
                     }
                 }
