@@ -50,7 +50,7 @@ impl GoTemplate for Func {
             match n {
                 ExpressionNode::Symbol(s) => {
                     match ind {
-                        // function name
+                        // function name is ind 0
                         0 => f.name = s.clone(),
                         _ => (),
                     }
